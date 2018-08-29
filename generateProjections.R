@@ -11,9 +11,9 @@
 # https://football.fantasysports.yahoo.com/f1/310181/6/prerank_auction_costs?filter=ALL&sort=TAC&count=0
 
 # Then source the functions to use
-source("scrapeAuctionValues.R")
+source("scrapeValues.R")
 
-# Next, run this call with the argument "ESPN" or "Yahoo"
+# Next, run this call with the argument "Keeper" or "Tay"
 auctionPrep("ESPN")
 
 # Verify the data has been producted by loading it

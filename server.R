@@ -1,6 +1,7 @@
 library(shiny)
 library(DT)
 library(ggplot2)
+library(dplyr)
 source("optimRoster.R")
 
 # Read and munge data
@@ -16,23 +17,32 @@ prdata <- readRDS("projdata.rds")
         ")",
         sep="")
   # Select out desired columns
-  prdata <- with(prdata, data.frame(
-    positionRank,
-    playername,
-    playernamelong,
-    position,
-    team,
-    points,
-    auctionValue
-  ))
-  prdata$playername <- as.character(prdata$playername)
-  prdata$playernamelong <- as.character(prdata$playernamelong)
+  # prdata <- with(prdata, data.frame(
+  #   positionRank,
+  #   playername,
+  #   playernamelong,
+  #   position,
+  #   team,
+  #   points,
+  #   auctionValue
+  # ))
+  prdata <- prdata %>% 
+    select(positionRank == pos_rank,
+           playername,
+           playernamelong,
+           position = pos,
+           team,
+           points,
+           auctionValue)
+  # prdata$playername <- as.character(prdata$playername)
+  # prdata$playernamelong <- as.character(prdata$playernamelong)
   prdata$available <- 'yes'
-  prdata$auctionValue <- as.numeric(as.character(prdata$auctionValue))
+  # prdata$auctionValue <- as.numeric(as.character(prdata$auctionValue))
   prdata$costEst <- prdata$auctionValue
   
-importTeams <- read.csv("config/teamnames.csv",header=FALSE)
-teams <- as.character(importTeams[,1])
+# importTeams <- read.csv("config/teamnames.csv",header=FALSE)
+# teams <- as.character(importTeams[,1])
+  teams <- read.csv("config/teamnames.csv",header=FALSE, stringsAsFactors = FALSE)
 
 # Server
 shinyServer(function(input, output, session) {
