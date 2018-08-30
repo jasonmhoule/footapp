@@ -1,6 +1,5 @@
 library(shiny)
-importTeams <- read.csv("teamnames.csv",header=FALSE)
-teams <- as.character(importTeams[,1])
+teams <- read.csv("config/teamnames.csv", header=FALSE, stringsAsFactors = FALSE)[,1]
 shinyUI(fluidPage(
   tags$head(tags$style(HTML(".selectize-dropdown {
                   z-index: 1001;

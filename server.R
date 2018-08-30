@@ -27,7 +27,7 @@ prdata <- readRDS("projdata.rds")
   #   auctionValue
   # ))
   prdata <- prdata %>% 
-    select(positionRank == pos_rank,
+    select(positionRank = pos_rank,
            playername,
            playernamelong,
            position = pos,
@@ -42,7 +42,7 @@ prdata <- readRDS("projdata.rds")
   
 # importTeams <- read.csv("config/teamnames.csv",header=FALSE)
 # teams <- as.character(importTeams[,1])
-  teams <- read.csv("config/teamnames.csv",header=FALSE, stringsAsFactors = FALSE)
+  teams <- read.csv("config/teamnames.csv", header=FALSE, stringsAsFactors = FALSE)[,1]
 
 # Server
 shinyServer(function(input, output, session) {
@@ -406,27 +406,26 @@ shinyServer(function(input, output, session) {
   basicRHS <- reactive({
     
     # Get current numbers of each position on myRoster
-    if(length(rv$myRoster[,1]) == 0) {
-      curr <- c("QB"=0,"RB"=0,"WR"=0,"TE"=0)
-    } else {
-      curr <- table(rv$myRoster$Position)
-    }
+    curr_QB <- sum(rv$myRoster$Position == "QB")
+    curr_RB <- sum(rv$myRoster$Position == "RB")
+    curr_WR <- sum(rv$myRoster$Position == "WR")
+    curr_TE <- sum(rv$myRoster$Position == "TE")
     
     # For each position:
       # Min = slots - current
       # Max = slots + flex (if available) - current
-    rhs <- c(input$numQB - curr["QB"], # QB Min
-             input$numQB + input$numFLEX*("QB" %in% input$checks) - curr["QB"], # QB Max
-             input$numRB - curr["RB"], # RB Min
-             input$numRB + input$numFLEX*("RB" %in% input$checks) - curr["RB"], # RB Max
-             input$numWR - curr["WR"], # WR Min
-             input$numWR + input$numFLEX*("WR" %in% input$checks) - curr["WR"], # WR Max
-             input$numTE - curr["TE"], # TE Min
-             input$numTE + input$numFLEX*("TE" %in% input$checks) - curr["TE"], # TE Max
-             (input$numQB - curr["QB"])*("QB" %in% input$checks) +
-               (input$numRB - curr["RB"])*("RB" %in% input$checks) +  
-               (input$numWR - curr["WR"])*("WR" %in% input$checks) +
-               (input$numTE - curr["TE"])*("TE" %in% input$checks) +
+    rhs <- c(input$numQB - curr_QB, # QB Min
+             input$numQB + input$numFLEX*("QB" %in% input$checks) - curr_QB, # QB Max
+             input$numRB - curr_RB, # RB Min
+             input$numRB + input$numFLEX*("RB" %in% input$checks) - curr_RB, # RB Max
+             input$numWR - curr_WR, # WR Min
+             input$numWR + input$numFLEX*("WR" %in% input$checks) - curr_WR, # WR Max
+             input$numTE - curr_TE, # TE Min
+             input$numTE + input$numFLEX*("TE" %in% input$checks) - curr_TE, # TE Max
+             (input$numQB - curr_QB)*("QB" %in% input$checks) +
+               (input$numRB - curr_RB)*("RB" %in% input$checks) +  
+               (input$numWR - curr_WR)*("WR" %in% input$checks) +
+               (input$numTE - curr_TE)*("TE" %in% input$checks) +
                input$numFLEX) # Total FLEXable
     names(rhs) <- NULL
     rhs
