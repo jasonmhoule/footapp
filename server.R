@@ -93,6 +93,7 @@ shinyServer(function(input, output, session) {
     
     rv$myRoster <- rv$draftBoard[rv$draftBoard$Owner == input$myTeam,
                                  c("Name","Position","Cost")]
+    rv$myRoster %>% rename(Pos = Position) %>% arrange(Pos)
     
   }, include.rownames = FALSE)
   
@@ -177,6 +178,7 @@ shinyServer(function(input, output, session) {
                                             "team",
                                             "auctionValue",
                                             "costEst")]
+    t <- arrange(t, positionRank)
     colnames(t) <- c("Available", "PRK", "Name", "Tm", "AAV", "Est")
     
     # Setup datatable
@@ -534,7 +536,7 @@ shinyServer(function(input, output, session) {
                                                        "points")]
     output <- rv$dreamTeam[,2:4]
     names(output) <- c("Name","Pos","Cost")
-    output
+    output %>% arrange(Pos)
     
   }, include.rownames = FALSE)
 
