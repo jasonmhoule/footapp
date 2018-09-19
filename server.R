@@ -446,7 +446,7 @@ shinyServer(function(input, output, session) {
       return("n/a")
     }
     
-    if (input$onPoint %in% rv$dreamTeam[,"playernamelong"]) {
+    if (input$onPoint %in% rv$dreamTeam$playernamelong) {
       
       # Player in Dream Team
       # Step one, remove player from pool and re-run dream team for secondBest lineup
