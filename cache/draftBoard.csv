@@ -1,2 +1,21 @@
-Name,Team,Position,Cost,pctAAV,Owner,Keeper,Points
-Le'Veon Bell,PIT,RB,70,1.171052632,Team 1,Drafted,287.9994246
+"Name","Team","Position","Cost","pctAAV","Owner","Keeper","Points"
+"Stephen Gostkowski","NEP","K",1,1,"Team 1","Drafted",151.791821663472
+"LeSean McCoy","BUF","RB",12,0.25,"Team 7","Drafted",211.070570087328
+"Jacksonville Jaguars","JAC","DST",5,5,"Team 6","Drafted",126.9675
+"Travis Kelce","KCC","TE",17,0.361702127659574,"Team 3","Drafted",175.880289181052
+"DeAndre Hopkins","HOU","WR",53,0.779411764705882,"Team 3","Drafted",232.3261094235
+"Josh Gordon","CLE","WR",26,0.896551724137931,"Team 7","Drafted",166.743728666318
+"Le'Veon Bell","PIT","RB",59,0.776315789473684,"Team 10","Drafted",287.999424602586
+"Saquon Barkley","NYG","RB",54,0.771428571428571,"Team 1","Drafted",246.212637068533
+"Todd Gurley","LAR","RB",61,0.813333333333333,"Team 6","Drafted",313.375873345694
+"Keenan Allen","LAC","WR",41,0.661290322580645,"Team 6","Drafted",210.41676637373
+"Dalvin Cook","MIN","RB",46,0.71875,"Team 2","Drafted",225.273697618075
+"T.Y. Hilton","IND","WR",29,0.69047619047619,"Team 5","Drafted",180.459651079723
+"Los Angeles Rams","LAR","DST",2,2,"Team 8","Drafted",118.128833333333
+"Aaron Rodgers","GBP","QB",28,2,"Team 2","Drafted",332.056690909091
+"Rob Gronkowski","NEP","TE",34,0.666666666666667,"Team 10","Drafted",198.097781397701
+"A.J. Green","CIN","WR",44,0.785714285714286,"Team 4","Drafted",210.04264466487
+"Amari Cooper","OAK","WR",23,0.766666666666667,"Team 4","Drafted",185.072750566712
+"David Johnson","ARI","RB",60,0.810810810810811,"Team 8","Drafted",295.788477911341
+"Antonio Brown","PIT","WR",52,0.732394366197183,"Team 7","Drafted",257.663650942915
+"Julio Jones","ATL","WR",43,0.754385964912281,"Team 9","Drafted",233.451309012608
