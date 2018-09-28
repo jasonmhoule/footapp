@@ -12,10 +12,10 @@ To run the Shiny app, you will need the following packages:
 install.packages(c("shiny", "DT", "ggplot2", "dplyr", "lpSolve"), dependencies=TRUE)
 ```
 
-To scrape your own values, you will also need the `rvest` and `tidyr` packages, along with the [ffanalytics package](https://github.com/isaactpetersen/FantasyFootballAnalyticsR/tree/master/R%20Package) from Github, which may be installed with the `devtools` package.
+To scrape your own values, you will also need the `tidyr` package, along with the [ffanalytics package](https://github.com/FantasyFootballAnalytics/ffanalytics) from Github, which may be installed with the `devtools` package.
 
 ```r
-install.packages(c("rvest", "tidyr"), dependencies=TRUE)
+install.packages(c("tidyr"), dependencies=TRUE)
 install.packages(c("devtools"), dependencies=TRUE, repos=c("http://rstudio.org/_packages", "http://cran.rstudio.com"))
 
 devtools::install_github(repo = "FantasyFootballAnalytics/ffanalytics", build_vignettes = TRUE)
@@ -25,4 +25,4 @@ Much more to come on how to set up and use this app.
 
 ## Acknowledgments
 
-* This work depends on the great work by [Fantasy Football Analytics](https://fantasyfootballanalytics.net/) and the [ffanalytics package](https://github.com/isaactpetersen/FantasyFootballAnalyticsR/tree/master/R%20Package).
+* This work depends on the great work by [Fantasy Football Analytics](https://fantasyfootballanalytics.net/) and the [ffanalytics package](https://github.com/FantasyFootballAnalytics/ffanalytics).
