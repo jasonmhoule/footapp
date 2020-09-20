@@ -113,8 +113,14 @@ shinyUI(fluidPage(
         tabPanel(
           "Calculator",
           "Some measures of money remaining/inflation.",
-          sliderInput("overallAAV","Overall AAV Adjustment",0,3,1,step=0.05),
           plotOutput('pctAAVTracker'),
+          fluidRow(
+            column(3, sliderInput("overallAAV","Overall AAV Multiplier",0,4,1,step=0.05)),
+            column(3, sliderInput("QBAAV","QB AAV Multiplier",0,5,1,step=0.1)),
+            column(2, sliderInput("WRAAV","WR AAV Multiplier",0,3,1,step=0.1)),
+            column(2, sliderInput("RBAAV","RB AAV Multiplier",0,3,1,step=0.1)),
+            column(2, sliderInput("TEAAV","TE AAV Multiplier",0,3,1,step=0.1))
+          ),
           plotOutput('Calculator')
         ),
         tabPanel("Under the hood",

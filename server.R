@@ -5,7 +5,6 @@ library(dplyr)
 source("optimRoster.R")
 
 # Read and munge data
-#prdata <- read.csv("projdata.csv")
 prdata <- readRDS("projdata.rds")
 
   # Fix player names
@@ -39,6 +38,13 @@ prdata <- readRDS("projdata.rds")
   prdata$available <- 'yes'
   # prdata$auctionValue <- as.numeric(as.character(prdata$auctionValue))
   prdata$costEst <- prdata$auctionValue
+  
+  posmx <- prdata %>% group_by(position) %>% summarise(m = max(auctionValue))
+  wt <- NULL
+  wt$QB <- seq(from = 0, to = filter(posmx, position == "QB")$m, length.out = 8)
+  wt$RB <- seq(from = 0, to = filter(posmx, position == "RB")$m, length.out = 8)
+  wt$TE <- seq(from = 0, to = filter(posmx, position == "TE")$m, length.out = 8)
+  wt$WR <- seq(from = 0, to = filter(posmx, position == "WR")$m, length.out = 8)
   
 # importTeams <- read.csv("config/teamnames.csv",header=FALSE)
 # teams <- as.character(importTeams[,1])
@@ -80,10 +86,10 @@ shinyServer(function(input, output, session) {
     Kupdate = 0
     )
   rv$baseline <-  data.frame(
-    QB = as.numeric(c(0,1,2,5,10,20,30,40,50,67)),
-    RB = as.numeric(c(0,1,2,5,10,20,30,40,50,67)),
-    WR = as.numeric(c(0,1,2,5,10,20,30,40,50,67)),
-    TE = as.numeric(c(0,1,2,5,10,20,30,40,50,67))
+    QB = wt$QB,
+    RB = wt$RB,
+    WR = wt$WR,
+    TE = wt$TE
   )
   
   
@@ -234,19 +240,17 @@ shinyServer(function(input, output, session) {
                    select = c(auctionValue, costEst, position))
                      
     # Combine with basis weights
-    w <- c(0,1,2,5,10,20,30,40,50,67)
-    
     for (pos in c("QB","RB","WR","TE")) {
-      wt <- data.frame(auctionValue = as.numeric(w),
+      ww <- data.frame(auctionValue = wt[[pos]],
                   costEst = as.numeric(rv$baseline[pos][,1]),
                   position=pos)
-      disp <- rbind(disp,wt)
+      disp <- rbind(disp,ww)
     }
     disp$auctionValue <- as.numeric(disp$auctionValue)
     disp$costEst <- as.numeric(disp$costEst)
     
     ggplot(disp, aes(auctionValue, costEst)) + geom_smooth() + geom_point() + 
-      facet_grid(. ~ position)
+      facet_grid(. ~ position, scales = "free")
     
   })
   
@@ -314,9 +318,7 @@ shinyServer(function(input, output, session) {
                                    c("auctionValue","costEst")])
     
     # Combine w/ basis weights to avoid overcorrecting on small sample size
-    
-    w <- c(0,1,2,5,10,20,30,40,50,67)
-    basis <- cbind(w,rv$baseline[positn])
+    basis <- cbind(wt[[positn]],rv$baseline[positn])
     colnames(basis) <- colnames(drafted)
     # Override: do not take drafted values into account
     # fullset <- rbind(drafted,basis)
@@ -377,12 +379,10 @@ shinyServer(function(input, output, session) {
   
   # Change overall AAV input: update rv$baselines and update the individual input sliders
   observeEvent(input$overallAAV, {
-    w <- c(0,1,2,5,10,20,30,40,50,67)
-    newbaseline <- w*input$overallAAV
-    rv$baseline$QB <- newbaseline
-    rv$baseline$RB <- newbaseline
-    rv$baseline$WR <- newbaseline
-    rv$baseline$TE <- newbaseline
+    rv$baseline$QB <- wt$QB * input$overallAAV * input$QBAAV
+    rv$baseline$RB <- wt$RB * input$overallAAV * input$RBAAV
+    rv$baseline$WR <- wt$WR * input$overallAAV * input$WRAAV
+    rv$baseline$TE <- wt$TE * input$overallAAV * input$TEAAV
     updateCostEst("QB")
     updateCostEst("RB")
     updateCostEst("WR")
@@ -392,10 +392,31 @@ shinyServer(function(input, output, session) {
     rv$WRupdate <- rv$WRupdate + 1
     rv$TEupdate <- rv$TEupdate + 1
     
-    #Placeholder: update individual input sliders
   })
   
-  # Change individual AAV inputs: update rv$baseline
+  observeEvent(input$QBAAV, {
+    rv$baseline$QB <- wt$QB * input$overallAAV * input$QBAAV
+    updateCostEst("QB")
+    rv$QBupdate <- rv$QBupdate + 1
+  })
+  
+  observeEvent(input$RBAAV, {
+    rv$baseline$RB <- wt$RB * input$overallAAV * input$RBAAV
+    updateCostEst("RB")
+    rv$RBupdate <- rv$RBupdate + 1
+  })
+  
+  observeEvent(input$WRAAV, {
+    rv$baseline$WR <- wt$WR * input$overallAAV * input$WRAAV
+    updateCostEst("WR")
+    rvWRBupdate <- rv$WRupdate + 1
+  })
+  
+  observeEvent(input$TEAAV, {
+    rv$baseline$TE <- wt$TE * input$overallAAV * input$TEAAV
+    updateCostEst("TE")
+    rv$TEupdate <- rv$TEupdate + 1
+  })
   
   #### Optimization values ####
   
