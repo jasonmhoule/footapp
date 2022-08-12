@@ -2,6 +2,7 @@ library(shiny)
 library(DT)
 library(ggplot2)
 library(dplyr)
+library(tidyverse)
 source("optimRoster.R")
 
 # Read and munge data
@@ -55,7 +56,6 @@ shinyServer(function(input, output, session) {
       Team = character(),
       Position = character(),
       Cost = integer(),
-      pctAAV = double(),
       Owner = character(),
       Keeper = character(),
       Points = double()
@@ -191,8 +191,12 @@ shinyServer(function(input, output, session) {
     validate(
       need(sum(rv$draftBoard$Keeper == 'Drafted')>0, "n/a")
     )
-    data <- as.data.frame(cbind(draftPos = 1:sum(rv$draftBoard$Keeper == 'Drafted'),
-                                pctAAV = rv$draftBoard[rv$draftBoard$Keeper == 'Drafted',]$pctAAV))
+    data <- tibble(rv$draftBoard) %>% 
+      filter(Keeper == "Drafted") %>% 
+      left_join(tibble(prdata), by = c(Name = "playername",Team = "team")) %>% 
+      mutate(draftPos = row_number()) %>% 
+      rowwise() %>% 
+      mutate(pctAAV = Cost / max(auctionValue,1))
 
     if (data$pctAAV[length(data$pctAAV)]>5) {
       data <- data[-length(data[,1]),]
@@ -252,7 +256,6 @@ shinyServer(function(input, output, session) {
         Team = playerData$team,
         Position = playerData$position,
         Cost = input$draftCost,
-        pctAAV = input$draftCost / playerData$auctionValue,
         Owner = input$draftTeam,
         Keeper = if(input$keeper) {"Kept"} else {"Drafted"},
         Points = playerData$points
