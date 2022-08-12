@@ -15,16 +15,7 @@ prdata <- readRDS("projdata.rds")
         as.character(prdata$team),
         ")",
         sep="")
-  # Select out desired columns
-  # prdata <- with(prdata, data.frame(
-  #   positionRank,
-  #   playername,
-  #   playernamelong,
-  #   position,
-  #   team,
-  #   points,
-  #   auctionValue
-  # ))
+
   prdata <- prdata %>% 
     select(positionRank = pos_rank,
            playername,
@@ -33,10 +24,8 @@ prdata <- readRDS("projdata.rds")
            team,
            points,
            auctionValue)
-  # prdata$playername <- as.character(prdata$playername)
-  # prdata$playernamelong <- as.character(prdata$playernamelong)
+  
   prdata$available <- 'yes'
-  # prdata$auctionValue <- as.numeric(as.character(prdata$auctionValue))
   prdata$costEst <- prdata$auctionValue
   
   posmx <- prdata %>% group_by(position) %>% summarise(m = max(auctionValue))
@@ -46,15 +35,13 @@ prdata <- readRDS("projdata.rds")
   wt$TE <- seq(from = 0, to = filter(posmx, position == "TE")$m, length.out = 8)
   wt$WR <- seq(from = 0, to = filter(posmx, position == "WR")$m, length.out = 8)
   
-# importTeams <- read.csv("config/teamnames.csv",header=FALSE)
-# teams <- as.character(importTeams[,1])
   teams <- read.csv("config/teamnames.csv", header=FALSE, stringsAsFactors = FALSE)[,1]
 
 # Server
 shinyServer(function(input, output, session) {
 
   #### Initialization ####
-  prdata
+  
   # Initialize input fields
   updateSelectInput(session,
                     "onPoint",
@@ -127,14 +114,6 @@ shinyServer(function(input, output, session) {
             playersdrafted,remainingdraftslots, moneyspentindraft, moneyleftinleague, AAVremainingdraftables,calculatedAAV))
   })
   
-  # output$draftMoney
-  
-  # output$moneySpentInDraft
-  
-  # output$leagueCashOnHand
-  
-  # output$AAVremainingDraftables
-    
   # Output the draftBoard variable
   output$draftBoard <- renderTable({
     
@@ -320,19 +299,18 @@ shinyServer(function(input, output, session) {
     # Combine w/ basis weights to avoid overcorrecting on small sample size
     basis <- cbind(wt[[positn]],rv$baseline[positn])
     colnames(basis) <- colnames(drafted)
-    # Override: do not take drafted values into account
-    # fullset <- rbind(drafted,basis)
+    
+    # Do not take drafted values into account
     fullset <- basis
     
-    # Calculate loess model
-    # Note that this has been replaced with lm()
+    # Calculate lm model
     model <- lm(costEst ~ auctionValue, fullset)
     
     # Pull in undrafted values for positn
     undrafted <- with(prdata, prdata[available == "yes" & position == positn,
                                      "auctionValue"])
     
-    # Predict new values from loess model and save back
+    # Predict new values from lm model and save back
     prdata[prdata$available == "yes" & prdata$position == positn,
            "costEst"] <<- predict.lm(model,data.frame(auctionValue = undrafted))
     
@@ -363,13 +341,12 @@ shinyServer(function(input, output, session) {
       file = "./cache/draftBoard.csv",
       stringsAsFactors = FALSE
     )
-    # These were commented out with saF = FALSE
-    # levels(prdata$available) <<- c("kept","no","yes")
+    
     rv$draftBoard$Position <<- as.factor(rv$draftBoard$Position)
     fullpos <- c("DST","K","QB","RB","TE","WR")
     levels(rv$draftBoard$Position) <<- c(levels(rv$draftBoard$Position),
                                          fullpos[!fullpos %in% levels(rv$draftBoard$Position)])
-    # prdata$playernamelong <<- as.character(prdata$playernamelong)
+    
     remainingPlayers <-
       subset(prdata, available == 'yes')
     updateSelectInput(session,
