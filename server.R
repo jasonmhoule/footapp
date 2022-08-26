@@ -57,8 +57,7 @@ shinyServer(function(input, output, session) {
       Position = character(),
       Cost = integer(),
       Owner = character(),
-      Keeper = character(),
-      Points = double()
+      Keeper = character()
     ),
     myRoster = data.frame(
       Name = character(),
@@ -108,10 +107,25 @@ shinyServer(function(input, output, session) {
     calculatedAAV <- moneyleftinleague/AAVremainingdraftables
     
     # Combine RHS, roster points, and calculated AAV into a table for output
+    if (length(which(rv$draftBoard$Owner == input$myTeam)) == 0) {
+      curr_team_pts <- 0
+    } else {
+      curr_team_pts <- tibble(prdata) %>% 
+        semi_join(tibble(rv$draftBoard) %>% filter(Owner == input$myTeam) %>% select(Name), by = c(playername = "Name")) %>% 
+        pull(points) %>% 
+        sum()
+    }
+
     cbind(c("QB Min", "QB Max", "RB Min", "RB Max", "WR Min", "WR Max", "TE Min", "TE Max", "Total FLEX", "Roster Points",
             "Players Drafted","Remaining Draft Slots", "Money Spent in Draft", "Money Left in League", "AAV remaining","calculatedAAV"),
-          c(basicRHS(), sum(rv$dreamTeam$points) + sum(rv$draftBoard[rv$draftBoard$Owner == input$myTeam, "Points"]),
-            playersdrafted,remainingdraftslots, moneyspentindraft, moneyleftinleague, AAVremainingdraftables,calculatedAAV))
+          c(basicRHS(),
+            sum(rv$dreamTeam$points) + curr_team_pts,
+            playersdrafted,
+            remainingdraftslots,
+            moneyspentindraft,
+            moneyleftinleague,
+            AAVremainingdraftables,
+            calculatedAAV))
   })
   
   # Output the draftBoard variable
@@ -257,8 +271,7 @@ shinyServer(function(input, output, session) {
         Position = playerData$position,
         Cost = input$draftCost,
         Owner = input$draftTeam,
-        Keeper = if(input$keeper) {"Kept"} else {"Drafted"},
-        Points = playerData$points
+        Keeper = if(input$keeper) {"Kept"} else {"Drafted"}
       )
     )
     
