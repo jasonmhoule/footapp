@@ -6,9 +6,7 @@ library(tidyverse)
 source("optimRoster.R")
 
 # Read and munge data
-prdata <- readRDS("projdata.rds")
-
-prdata <- prdata %>% 
+prdata <- readRDS("projdata.rds") %>% 
   select(positionRank = pos_rank,
          playername,
          position = pos,
@@ -335,11 +333,7 @@ shinyServer(function(input, output, session) {
   #### Data I/O ####
   # Observing Event: Saving Draft Board from inputs
   observeEvent(input$saveDraftBoard, {
-    write.csv(
-      x = prdata,
-      file = "./cache/prdata.csv",
-      row.names = FALSE, quote = TRUE
-    )
+    file.copy("projdata.rds","./cache/projdata.rds")
     write.csv(
       x = isolate({rv$draftBoard}),
       file = "./cache/draftBoard.csv",
@@ -349,10 +343,6 @@ shinyServer(function(input, output, session) {
   
   # Observing Event: Load Draft Board from cache
   observeEvent(input$loadDraftBoard, {
-    prdata <<- read.csv(
-      file = "./cache/prdata.csv",
-      stringsAsFactors = FALSE
-    )
     rv$draftBoard <- read.csv(
       file = "./cache/draftBoard.csv",
       stringsAsFactors = FALSE
