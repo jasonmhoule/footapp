@@ -81,12 +81,11 @@ shinyServer(function(input, output, session) {
     DSTupdate = 0,
     Kupdate = 0
   )
-  rv$baseline <-  data.frame(
-    QB = wt$QB,
-    RB = wt$RB,
-    WR = wt$WR,
-    TE = wt$TE
-  )
+  baseline <- NULL
+  baseline$QB <- reactive({wt$QB * input$overallAAV * input$QBAAV})
+  baseline$RB <- reactive({wt$RB * input$overallAAV * input$RBAAV})
+  baseline$WR <- reactive({wt$WR * input$overallAAV * input$WRAAV})
+  baseline$TE <- reactive({wt$TE * input$overallAAV * input$TEAAV})
   
   #### Main Outputs ####
   # Output sidebar constants
@@ -146,33 +145,21 @@ shinyServer(function(input, output, session) {
   
   ## Output the player boards
   output$playerBoardQB <- DT::renderDataTable({
-    rv$QBupdate
-    rv$draftBoard
     outputPlayerBoard("QB")
   })
   output$playerBoardRB <- DT::renderDataTable({
-    rv$RBupdate
-    rv$draftBoard
     outputPlayerBoard("RB")
   })
   output$playerBoardWR <- DT::renderDataTable({
-    rv$WRupdate
-    rv$draftBoard
     outputPlayerBoard("WR")
   })
   output$playerBoardTE <- DT::renderDataTable({
-    rv$TEupdate
-    rv$draftBoard
     outputPlayerBoard("TE")
   })
   output$playerBoardDST <- DT::renderDataTable({
-    rv$DSTupdate
-    rv$draftBoard
     outputPlayerBoard("DST")
   })
   output$playerBoardK <- DT::renderDataTable({
-    rv$Kupdate
-    rv$draftBoard
     outputPlayerBoard("K")
   })
   
@@ -256,7 +243,7 @@ shinyServer(function(input, output, session) {
     # Combine with basis weights
     for (pos in c("QB","RB","WR","TE")) {
       ww <- data.frame(auctionValue = wt[[pos]],
-                       Cost = as.numeric(rv$baseline[pos][,1]),
+                       Cost = as.numeric(baseline[[pos]]()),
                        position=pos)
       disp <- rbind(disp,ww)
     }
@@ -294,15 +281,6 @@ shinyServer(function(input, output, session) {
       )
     )
     
-    # Update rv to trigger draftBoard and graph output updates
-    switch(as.character(playerData$position),
-           "QB" = {rv$QBupdate <- rv$QBupdate + 1},
-           "RB" = {rv$RBupdate <- rv$RBupdate + 1},
-           "WR" = {rv$WRupdate <- rv$WRupdate + 1},
-           "TE" = {rv$TEupdate <- rv$TEupdate + 1},
-           "DST" = {rv$DSTupdate <- rv$DSTupdate + 1},
-           "K" = {rv$Kupdate <- rv$Kupdate + 1})
-    
     # Reset inputs and remove values
     remainingPlayers <- prdata %>% 
       is_available(tibble(rv$draftBoard)) %>% 
@@ -318,7 +296,7 @@ shinyServer(function(input, output, session) {
   # Helper functions to calculate model per position
   posTable <- function(positn) {
     tibble(auctionValue = wt[[positn]],
-           costEst = rv$baseline[[positn]],
+           costEst = baseline[[positn]](),
            position = positn)
   }
   calcModel <- function() {
@@ -361,39 +339,6 @@ shinyServer(function(input, output, session) {
                       choices = c("Select" = "", remainingPlayers$playernamelong))
   })
   
-  # Change overall AAV input: update rv$baselines and update the individual input sliders
-  observeEvent(input$overallAAV, {
-    rv$baseline$QB <- wt$QB * input$overallAAV * input$QBAAV
-    rv$baseline$RB <- wt$RB * input$overallAAV * input$RBAAV
-    rv$baseline$WR <- wt$WR * input$overallAAV * input$WRAAV
-    rv$baseline$TE <- wt$TE * input$overallAAV * input$TEAAV
-    rv$QBupdate <- rv$QBupdate + 1
-    rv$RBupdate <- rv$RBupdate + 1
-    rv$WRupdate <- rv$WRupdate + 1
-    rv$TEupdate <- rv$TEupdate + 1
-    
-  })
-  
-  observeEvent(input$QBAAV, {
-    rv$baseline$QB <- wt$QB * input$overallAAV * input$QBAAV
-    rv$QBupdate <- rv$QBupdate + 1
-  })
-  
-  observeEvent(input$RBAAV, {
-    rv$baseline$RB <- wt$RB * input$overallAAV * input$RBAAV
-    rv$RBupdate <- rv$RBupdate + 1
-  })
-  
-  observeEvent(input$WRAAV, {
-    rv$baseline$WR <- wt$WR * input$overallAAV * input$WRAAV
-    rvWRBupdate <- rv$WRupdate + 1
-  })
-  
-  observeEvent(input$TEAAV, {
-    rv$baseline$TE <- wt$TE * input$overallAAV * input$TEAAV
-    rv$TEupdate <- rv$TEupdate + 1
-  })
-  
   #### Optimization values ####
   
   # Reactive modules to capture config updates to feed to optimization routines
@@ -429,7 +374,6 @@ shinyServer(function(input, output, session) {
     names(rhs) <- NULL
     rhs
   })
-  
   
   # Bid-up-to number, responsive on the on-point player
   output$bidUpToValue <- renderText({
@@ -514,16 +458,8 @@ shinyServer(function(input, output, session) {
     
   }
   
-  
   # Dream team
   output$dreamTeam <- renderTable({
-    
-    # Make this responsive to updates from any player except DST or K
-    rv$QBupdate
-    rv$RBupdate
-    rv$WRupdate
-    rv$TEupdate
-    rv$baseline
     
     # Player data to choose from
     choosePlayers <- prdata %>% 
