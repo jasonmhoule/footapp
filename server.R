@@ -131,31 +131,17 @@ shinyServer(function(input, output, session) {
   })
   
   # Output the draftBoard variable
-  output$draftBoard <- renderTable({
-    
-    rv$draftBoard
-    
-  })
+  output$draftBoard <- renderTable({ rv$draftBoard })
   
   ## Output the player boards
-  output$playerBoardQB <- DT::renderDataTable({
-    outputPlayerBoard("QB")
-  })
-  output$playerBoardRB <- DT::renderDataTable({
-    outputPlayerBoard("RB")
-  })
-  output$playerBoardWR <- DT::renderDataTable({
-    outputPlayerBoard("WR")
-  })
-  output$playerBoardTE <- DT::renderDataTable({
-    outputPlayerBoard("TE")
-  })
-  output$playerBoardDST <- DT::renderDataTable({
-    outputPlayerBoard("DST")
-  })
-  output$playerBoardK <- DT::renderDataTable({
-    outputPlayerBoard("K")
-  })
+  for(p in c("DST","K","QB","RB","TE","WR")) {
+    # Local is needed to force rendered assignment to output, otherwise the rendering occurs later when p is WR
+    local({
+      my_p <- p
+      fullpos <- paste0("playerBoard",my_p)
+      output[[fullpos]] <- DT::renderDataTable({ outputPlayerBoard(my_p) })
+    })
+  }
   
   # Player board helper function
   outputPlayerBoard <- function(positn) {
