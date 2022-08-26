@@ -222,7 +222,8 @@ shinyServer(function(input, output, session) {
       geom_point() +
       geom_smooth(span=min(1,20/length(data[,1]))) +
       lims(x=c(0, max(100,length(data[,1]))),
-           y=c(0, max(2,quantile(data$pctAAV,.85))))
+           y=c(0, max(2,quantile(data$pctAAV,.85)))) +
+      theme(text = element_text(size = 20))
   })
   
   # Output the model calculator
@@ -245,7 +246,8 @@ shinyServer(function(input, output, session) {
     disp$Cost <- as.numeric(disp$Cost)
     
     ggplot(disp, aes(auctionValue, Cost)) + geom_smooth() + geom_point() + 
-      facet_grid(. ~ position, scales = "free")
+      facet_grid(. ~ position, scales = "free") +
+      theme(text = element_text(size = 20))
     
   })
   
