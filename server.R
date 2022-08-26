@@ -8,19 +8,9 @@ source("optimRoster.R")
 # Read and munge data
 prdata <- readRDS("projdata.rds")
 
-# Fix player names
-prdata$playernamelong <- paste(as.character(prdata$playername),
-                               " (",
-                               as.character(prdata$position),
-                               ", ",
-                               as.character(prdata$team),
-                               ")",
-                               sep="")
-
 prdata <- prdata %>% 
   select(positionRank = pos_rank,
          playername,
-         playernamelong,
          position = pos,
          team,
          points,
@@ -47,6 +37,19 @@ is_available <- function(df, df2, check = "Yes") {
   
 }
 
+add_long_name <- function(df) {
+  
+  df %>% 
+    mutate(playernamelong = paste(as.character(playername),
+                                  " (",
+                                  as.character(position),
+                                  ", ",
+                                  as.character(team),
+                                  ")",
+                                  sep=""))
+  
+}
+
 # Server
 shinyServer(function(input, output, session) {
   
@@ -55,7 +58,7 @@ shinyServer(function(input, output, session) {
   # Initialize input fields
   updateSelectInput(session,
                     "onPoint",
-                    choices = c("Select" = "", prdata$playernamelong))
+                    choices = c("Select" = "", add_long_name(prdata)$playernamelong))
   updateSelectInput(session, "draftTeam", choices = c("Select" = "", teams))
   
   # Setup reactive values
@@ -278,7 +281,9 @@ shinyServer(function(input, output, session) {
     )
     
     # Format player data and add to draftBoard
-    playerData <- prdata[prdata$playernamelong == input$onPoint,][1,]
+    playerData <- prdata %>% 
+      add_long_name() %>% 
+      filter(playernamelong == input$onPoint)
     rv$draftBoard <- rbind(
       rv$draftBoard,
       data.frame(
@@ -302,7 +307,8 @@ shinyServer(function(input, output, session) {
     
     # Reset inputs and remove values
     remainingPlayers <- prdata %>% 
-      is_available(tibble(rv$draftBoard))
+      is_available(tibble(rv$draftBoard)) %>% 
+      add_long_name()
     updateSelectInput(session,
                       "onPoint",
                       choices = c("Select" = "", remainingPlayers$playernamelong))
@@ -358,7 +364,8 @@ shinyServer(function(input, output, session) {
                                          fullpos[!fullpos %in% levels(rv$draftBoard$Position)])
     
     remainingPlayers <- prdata %>% 
-      is_available(tibble(rv$draftBoard))
+      is_available(tibble(rv$draftBoard)) %>% 
+      add_long_name()
     updateSelectInput(session,
                       "onPoint",
                       choices = c("Select" = "", remainingPlayers$playernamelong))
@@ -443,7 +450,11 @@ shinyServer(function(input, output, session) {
     # Check against position restraints and break if not a fit (bidUpTo = 0)
     j <- basicRHS()[seq(2,8,2)]
     j2 <- c("QB","RB","WR","TE")[j>0]
-    if (!(prdata[prdata$playernamelong == input$onPoint,"position"] %in% j2)) {
+    op_pos <- prdata %>% 
+      add_long_name() %>% 
+      filter(playernamelong == input$onPoint) %>% 
+      pull(position)
+    if (!(op_pos %in% j2)) {
       return("n/a")
     }
     
@@ -454,6 +465,7 @@ shinyServer(function(input, output, session) {
       # Player data to choose from
       choosePlayers <- prdata %>% 
         is_available(tibble(rv$draftBoard)) %>% 
+        add_long_name() %>% 
         filter(!(position %in% c("DST","K")), !(playernamelong == input$onPoint)) %>% 
         mutate(costEst = predict.lm(costModel(),.))
       
@@ -487,7 +499,8 @@ shinyServer(function(input, output, session) {
     choosePlayers <- prdata %>% 
       is_available(tibble(rv$draftBoard)) %>% 
       filter(!(position %in% c("DST","K"))) %>% 
-      mutate(costEst = predict.lm(costModel(),.))
+      mutate(costEst = predict.lm(costModel(),.)) %>% 
+      add_long_name()
     
     # Set player's cost to zero
     choosePlayers[choosePlayers$playernamelong == player, "costEst"] <- 0
@@ -526,7 +539,8 @@ shinyServer(function(input, output, session) {
     choosePlayers <- prdata %>% 
       is_available(tibble(rv$draftBoard)) %>% 
       filter(!(position %in% c("DST","K"))) %>% 
-      mutate(costEst = predict.lm(costModel(),.))
+      mutate(costEst = predict.lm(costModel(),.)) %>% 
+      add_long_name()
     
     result <- optimRoster(
       prdata = choosePlayers,
