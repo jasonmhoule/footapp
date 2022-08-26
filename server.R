@@ -107,7 +107,7 @@ shinyServer(function(input, output, session) {
     remainingdraftslots <- draftslots - playersdrafted
     mprdata <- prdata %>% is_available(tibble(rv$draftBoard)) %>% filter(position %in% c("QB", "RB", "WR", "TE"))
     sprdata <- mprdata[order(mprdata$auctionValue,decreasing = TRUE),]
-    moneyinleague <- 200 * length(teams) #hard coded
+    moneyinleague <- input$totalBudget * length(teams)
     moneyspentindraft <- sum(rv$draftBoard$Cost)
     moneyleftinleague <- moneyinleague - moneyspentindraft
     AAVremainingdraftables <- sum(sprdata$auctionValue[1:remainingdraftslots])
