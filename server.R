@@ -8,32 +8,32 @@ source("optimRoster.R")
 # Read and munge data
 prdata <- readRDS("projdata.rds")
 
-  # Fix player names
-  prdata$playernamelong <- paste(as.character(prdata$playername),
-        " (",
-        as.character(prdata$position),
-        ", ",
-        as.character(prdata$team),
-        ")",
-        sep="")
+# Fix player names
+prdata$playernamelong <- paste(as.character(prdata$playername),
+                               " (",
+                               as.character(prdata$position),
+                               ", ",
+                               as.character(prdata$team),
+                               ")",
+                               sep="")
 
-  prdata <- prdata %>% 
-    select(positionRank = pos_rank,
-           playername,
-           playernamelong,
-           position = pos,
-           team,
-           points,
-           auctionValue)
-  
-  posmx <- prdata %>% group_by(position) %>% summarise(m = max(auctionValue))
-  wt <- NULL
-  wt$QB <- seq(from = 0, to = filter(posmx, position == "QB")$m, length.out = 8)
-  wt$RB <- seq(from = 0, to = filter(posmx, position == "RB")$m, length.out = 8)
-  wt$TE <- seq(from = 0, to = filter(posmx, position == "TE")$m, length.out = 8)
-  wt$WR <- seq(from = 0, to = filter(posmx, position == "WR")$m, length.out = 8)
-  
-  teams <- read.csv("config/teamnames.csv", header=FALSE, stringsAsFactors = FALSE)[,1]
+prdata <- prdata %>% 
+  select(positionRank = pos_rank,
+         playername,
+         playernamelong,
+         position = pos,
+         team,
+         points,
+         auctionValue)
+
+posmx <- prdata %>% group_by(position) %>% summarise(m = max(auctionValue))
+wt <- NULL
+wt$QB <- seq(from = 0, to = filter(posmx, position == "QB")$m, length.out = 8)
+wt$RB <- seq(from = 0, to = filter(posmx, position == "RB")$m, length.out = 8)
+wt$TE <- seq(from = 0, to = filter(posmx, position == "TE")$m, length.out = 8)
+wt$WR <- seq(from = 0, to = filter(posmx, position == "WR")$m, length.out = 8)
+
+teams <- read.csv("config/teamnames.csv", header=FALSE, stringsAsFactors = FALSE)[,1]
 
 is_available <- function(df, df2, check = "Yes") {
   
@@ -46,10 +46,10 @@ is_available <- function(df, df2, check = "Yes") {
   }
   
 }
-  
+
 # Server
 shinyServer(function(input, output, session) {
-
+  
   #### Initialization ####
   
   # Initialize input fields
@@ -79,7 +79,7 @@ shinyServer(function(input, output, session) {
     TEupdate = 0,
     DSTupdate = 0,
     Kupdate = 0
-    )
+  )
   rv$baseline <-  data.frame(
     QB = wt$QB,
     RB = wt$RB,
@@ -123,7 +123,7 @@ shinyServer(function(input, output, session) {
         pull(points) %>% 
         sum()
     }
-
+    
     cbind(c("QB Min", "QB Max", "RB Min", "RB Max", "WR Min", "WR Max", "TE Min", "TE Max", "Total FLEX", "Roster Points",
             "Players Drafted","Remaining Draft Slots", "Money Spent in Draft", "Money Left in League", "AAV remaining","calculatedAAV"),
           c(basicRHS(),
@@ -148,7 +148,7 @@ shinyServer(function(input, output, session) {
     rv$QBupdate
     rv$draftBoard
     outputPlayerBoard("QB")
-    })
+  })
   output$playerBoardRB <- DT::renderDataTable({
     rv$RBupdate
     rv$draftBoard
@@ -183,7 +183,7 @@ shinyServer(function(input, output, session) {
       left_join(tibble(rv$draftBoard) %>% select(Keeper, Name, Cost), by = c(playername = "Name")) %>%
       mutate(available = if_else(is.na(Keeper),"yes",Keeper),
              Cost = as.double(Cost))
-      
+    
     # print(t[which(!is.na(t$Cost)),])
     if(positn %in% c("DST","K")) {
       t <- mutate(t, costEst = auctionValue)
@@ -200,7 +200,7 @@ shinyServer(function(input, output, session) {
              AAV = auctionValue,
              Est = costEst) %>% 
       arrange(PRK)
-
+    
     # Setup datatable
     datatable(t,
               rownames = FALSE,
@@ -232,7 +232,7 @@ shinyServer(function(input, output, session) {
       mutate(draftPos = row_number()) %>% 
       rowwise() %>% 
       mutate(pctAAV = Cost / max(auctionValue,1))
-
+    
     if (data$pctAAV[length(data$pctAAV)]>5) {
       data <- data[-length(data[,1]),]
     }
@@ -251,12 +251,12 @@ shinyServer(function(input, output, session) {
       filter(Position %in% c("QB","RB","WR","TE"), Keeper == "Drafted") %>% 
       left_join(prdata, by = c(Name = "playername")) %>% 
       select(auctionValue, Cost, position)
-                     
+    
     # Combine with basis weights
     for (pos in c("QB","RB","WR","TE")) {
       ww <- data.frame(auctionValue = wt[[pos]],
-                  Cost = as.numeric(rv$baseline[pos][,1]),
-                  position=pos)
+                       Cost = as.numeric(rv$baseline[pos][,1]),
+                       position=pos)
       disp <- rbind(disp,ww)
     }
     disp$auctionValue <- as.numeric(disp$auctionValue)
@@ -299,7 +299,7 @@ shinyServer(function(input, output, session) {
            "TE" = {rv$TEupdate <- rv$TEupdate + 1},
            "DST" = {rv$DSTupdate <- rv$DSTupdate + 1},
            "K" = {rv$Kupdate <- rv$Kupdate + 1})
-
+    
     # Reset inputs and remove values
     remainingPlayers <- prdata %>% 
       is_available(tibble(rv$draftBoard))
@@ -535,7 +535,7 @@ shinyServer(function(input, output, session) {
       constraintVal = moneyAvailable(),
       dir = "max"
     )
-
+    
     rv$dreamTeam <- choosePlayers[result$solution==1,c("playernamelong",
                                                        "playername",
                                                        "position",
@@ -546,5 +546,5 @@ shinyServer(function(input, output, session) {
     output %>% arrange(Pos)
     
   }, include.rownames = FALSE)
-
+  
 })
