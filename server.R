@@ -26,9 +26,6 @@ prdata <- readRDS("projdata.rds")
            points,
            auctionValue)
   
-  prdata$available <- 'yes'
-  prdata$costEst <- prdata$auctionValue
-  
   posmx <- prdata %>% group_by(position) %>% summarise(m = max(auctionValue))
   wt <- NULL
   wt$QB <- seq(from = 0, to = filter(posmx, position == "QB")$m, length.out = 8)
@@ -38,6 +35,18 @@ prdata <- readRDS("projdata.rds")
   
   teams <- read.csv("config/teamnames.csv", header=FALSE, stringsAsFactors = FALSE)[,1]
 
+is_available <- function(df, df2, check = "Yes") {
+  
+  if (check == "Yes") {
+    tibble(df) %>% 
+      anti_join(df2, by = c(playername = "Name"))
+  } else {
+    tibble(df) %>% 
+      semi_join(df2, by = c(playername = "Name"))
+  }
+  
+}
+  
 # Server
 shinyServer(function(input, output, session) {
 
@@ -78,7 +87,6 @@ shinyServer(function(input, output, session) {
     TE = wt$TE
   )
   
-  
   #### Main Outputs ####
   # Output sidebar constants
   output$myRoster <- renderTable({
@@ -97,7 +105,7 @@ shinyServer(function(input, output, session) {
     draftslots <- input$rosterspots * length(teams)
     playersdrafted <- sum(rv$draftBoard$Position %in% c("QB", "RB", "WR", "TE"))
     remainingdraftslots <- draftslots - playersdrafted
-    mprdata <- prdata[prdata$available == 'yes' & prdata$position %in% c("QB", "RB", "WR", "TE"),]
+    mprdata <- prdata %>% is_available(tibble(rv$draftBoard)) %>% filter(position %in% c("QB", "RB", "WR", "TE"))
     sprdata <- mprdata[order(mprdata$auctionValue,decreasing = TRUE),]
     moneyinleague <- 200 * length(teams) #hard coded
     moneyspentindraft <- sum(rv$draftBoard$Cost)
@@ -168,18 +176,31 @@ shinyServer(function(input, output, session) {
   })
   
   # Player board helper function
-  outputPlayerBoard <- function(position) {
-    # prdata <- getPrData()
-    t <-
-      prdata[prdata$position == position, c("available",
-                                            "positionRank",
-                                            "playername",
-                                            "team",
-                                            "auctionValue",
-                                            "costEst")]
-    t <- arrange(t, positionRank)
-    colnames(t) <- c("Available", "PRK", "Name", "Tm", "AAV", "Est")
+  outputPlayerBoard <- function(positn) {
     
+    t <- prdata %>% 
+      filter(position == positn) %>% 
+      left_join(tibble(rv$draftBoard) %>% select(Keeper, Name, Cost), by = c(playername = "Name")) %>%
+      mutate(available = if_else(is.na(Keeper),"yes",Keeper),
+             Cost = as.double(Cost))
+      
+    # print(t[which(!is.na(t$Cost)),])
+    if(positn %in% c("DST","K")) {
+      t <- mutate(t, costEst = auctionValue)
+    } else {
+      t <- mutate(t, costEst = predict.lm(costModel(),t))
+    }
+    
+    t <- t %>% 
+      mutate(costEst = if_else(is.na(Cost), costEst, Cost)) %>%
+      select(Available = available,
+             PRK = positionRank,
+             Name = playername,
+             Tm = team,
+             AAV = auctionValue,
+             Est = costEst) %>% 
+      arrange(PRK)
+
     # Setup datatable
     datatable(t,
               rownames = FALSE,
@@ -189,12 +210,12 @@ shinyServer(function(input, output, session) {
                              )))) %>% formatStyle(
                                'Available',
                                target = 'row',
-                               backgroundColor = styleEqual(c('no','kept'),c('gray','black')),
-                               color = styleEqual(c('no','kept'),c('white','white'))
+                               backgroundColor = styleEqual(c('Drafted','Kept'),c('gray','black')),
+                               color = styleEqual(c('Drafted','Kept'),c('white','white'))
                              ) %>% formatStyle(
                                'Est','Available',
-                               color = styleEqual(c('no','kept'),c('yellow','white')),
-                               fontWeight = styleEqual(c('no','kept'),c('bold','normal'))
+                               color = styleEqual(c('Drafted','Kept'),c('yellow','white')),
+                               fontWeight = styleEqual(c('Drafted','Kept'),c('bold','normal'))
                              ) %>% formatRound(
                                'Est', 1
                              )
@@ -225,28 +246,23 @@ shinyServer(function(input, output, session) {
   # Output the model calculator
   output$Calculator <- renderPlot({
     
-    # Update with any roster update
-    rv$QBupdate
-    rv$RBupdate
-    rv$WRupdate
-    rv$TEupdate
-    
     # Get player data
-    disp <- subset(prdata, position %in% c("QB","RB","WR","TE") &
-                     available == 'no',
-                   select = c(auctionValue, costEst, position))
+    disp <- rv$draftBoard %>% 
+      filter(Position %in% c("QB","RB","WR","TE"), Keeper == "Drafted") %>% 
+      left_join(prdata, by = c(Name = "playername")) %>% 
+      select(auctionValue, Cost, position)
                      
     # Combine with basis weights
     for (pos in c("QB","RB","WR","TE")) {
       ww <- data.frame(auctionValue = wt[[pos]],
-                  costEst = as.numeric(rv$baseline[pos][,1]),
+                  Cost = as.numeric(rv$baseline[pos][,1]),
                   position=pos)
       disp <- rbind(disp,ww)
     }
     disp$auctionValue <- as.numeric(disp$auctionValue)
-    disp$costEst <- as.numeric(disp$costEst)
+    disp$Cost <- as.numeric(disp$Cost)
     
-    ggplot(disp, aes(auctionValue, costEst)) + geom_smooth() + geom_point() + 
+    ggplot(disp, aes(auctionValue, Cost)) + geom_smooth() + geom_point() + 
       facet_grid(. ~ position, scales = "free")
     
   })
@@ -275,10 +291,6 @@ shinyServer(function(input, output, session) {
       )
     )
     
-    # Update prdata available and costEst fields
-    prdata[prdata$playernamelong == input$onPoint,]$available <<- if(input$keeper) {'kept'} else {'no'}
-    prdata[prdata$playernamelong == input$onPoint,]$costEst <<- input$draftCost
-    
     # Update rv to trigger draftBoard and graph output updates
     switch(as.character(playerData$position),
            "QB" = {rv$QBupdate <- rv$QBupdate + 1},
@@ -288,12 +300,9 @@ shinyServer(function(input, output, session) {
            "DST" = {rv$DSTupdate <- rv$DSTupdate + 1},
            "K" = {rv$Kupdate <- rv$Kupdate + 1})
 
-    # Use new draft value to recalculate model and update costEst values
-    updateCostEst(as.character(playerData$position))
-    
     # Reset inputs and remove values
-    remainingPlayers <-
-      subset(prdata, available == 'yes')
+    remainingPlayers <- prdata %>% 
+      is_available(tibble(rv$draftBoard))
     updateSelectInput(session,
                       "onPoint",
                       choices = c("Select" = "", remainingPlayers$playernamelong))
@@ -302,35 +311,20 @@ shinyServer(function(input, output, session) {
     updateCheckboxInput(session, "keeper", value = FALSE)
   })
   
-  # Helper function to recalculate model and update costEst values
-  updateCostEst <- function(positn) {
+  # Helper functions to calculate model per position
+  posTable <- function(positn) {
+    tibble(auctionValue = wt[[positn]],
+           costEst = rv$baseline[[positn]],
+           position = positn)
+  }
+  calcModel <- function() {
     
-    # NA for DST, K
-    if(positn %in% c("DST","K")) {return()}
-      
-    # Pull in draft values for positn, note that 'costEst' is now real price paid
-    drafted <- with(prdata, prdata[available == "no" & position == positn,
-                                   c("auctionValue","costEst")])
-    
-    # Combine w/ basis weights to avoid overcorrecting on small sample size
-    basis <- cbind(wt[[positn]],rv$baseline[positn])
-    colnames(basis) <- colnames(drafted)
-    
-    # Do not take drafted values into account
-    fullset <- basis
-    
-    # Calculate lm model
-    model <- lm(costEst ~ auctionValue, fullset)
-    
-    # Pull in undrafted values for positn
-    undrafted <- with(prdata, prdata[available == "yes" & position == positn,
-                                     "auctionValue"])
-    
-    # Predict new values from lm model and save back
-    prdata[prdata$available == "yes" & prdata$position == positn,
-           "costEst"] <<- predict.lm(model,data.frame(auctionValue = undrafted))
+    basis <- map_dfr(c("QB","RB","TE","WR"), posTable)
+    lm(costEst ~ auctionValue * position, basis)
     
   }
+  
+  costModel <- reactive({calcModel()})
   
   #### Data I/O ####
   # Observing Event: Saving Draft Board from inputs
@@ -363,8 +357,8 @@ shinyServer(function(input, output, session) {
     levels(rv$draftBoard$Position) <<- c(levels(rv$draftBoard$Position),
                                          fullpos[!fullpos %in% levels(rv$draftBoard$Position)])
     
-    remainingPlayers <-
-      subset(prdata, available == 'yes')
+    remainingPlayers <- prdata %>% 
+      is_available(tibble(rv$draftBoard))
     updateSelectInput(session,
                       "onPoint",
                       choices = c("Select" = "", remainingPlayers$playernamelong))
@@ -376,10 +370,6 @@ shinyServer(function(input, output, session) {
     rv$baseline$RB <- wt$RB * input$overallAAV * input$RBAAV
     rv$baseline$WR <- wt$WR * input$overallAAV * input$WRAAV
     rv$baseline$TE <- wt$TE * input$overallAAV * input$TEAAV
-    updateCostEst("QB")
-    updateCostEst("RB")
-    updateCostEst("WR")
-    updateCostEst("TE")
     rv$QBupdate <- rv$QBupdate + 1
     rv$RBupdate <- rv$RBupdate + 1
     rv$WRupdate <- rv$WRupdate + 1
@@ -389,25 +379,21 @@ shinyServer(function(input, output, session) {
   
   observeEvent(input$QBAAV, {
     rv$baseline$QB <- wt$QB * input$overallAAV * input$QBAAV
-    updateCostEst("QB")
     rv$QBupdate <- rv$QBupdate + 1
   })
   
   observeEvent(input$RBAAV, {
     rv$baseline$RB <- wt$RB * input$overallAAV * input$RBAAV
-    updateCostEst("RB")
     rv$RBupdate <- rv$RBupdate + 1
   })
   
   observeEvent(input$WRAAV, {
     rv$baseline$WR <- wt$WR * input$overallAAV * input$WRAAV
-    updateCostEst("WR")
     rvWRBupdate <- rv$WRupdate + 1
   })
   
   observeEvent(input$TEAAV, {
     rv$baseline$TE <- wt$TE * input$overallAAV * input$TEAAV
-    updateCostEst("TE")
     rv$TEupdate <- rv$TEupdate + 1
   })
   
@@ -466,9 +452,10 @@ shinyServer(function(input, output, session) {
       # Player in Dream Team
       # Step one, remove player from pool and re-run dream team for secondBest lineup
       # Player data to choose from
-      choosePlayers <- subset(prdata,available == 'yes' &
-                                !(position %in% c("DST","K")) &
-                                !(playernamelong == input$onPoint))
+      choosePlayers <- prdata %>% 
+        is_available(tibble(rv$draftBoard)) %>% 
+        filter(!(position %in% c("DST","K")), !(playernamelong == input$onPoint)) %>% 
+        mutate(costEst = predict.lm(costModel(),.))
       
       result <- optimRoster(
         prdata = choosePlayers,
@@ -497,7 +484,10 @@ shinyServer(function(input, output, session) {
   getBidUpTo <- function(player,pointConstraint) {
     
     # Player data to choose from
-    choosePlayers <- subset(prdata,available=='yes' & !(position %in% c("DST","K")))
+    choosePlayers <- prdata %>% 
+      is_available(tibble(rv$draftBoard)) %>% 
+      filter(!(position %in% c("DST","K"))) %>% 
+      mutate(costEst = predict.lm(costModel(),.))
     
     # Set player's cost to zero
     choosePlayers[choosePlayers$playernamelong == player, "costEst"] <- 0
@@ -533,7 +523,10 @@ shinyServer(function(input, output, session) {
     rv$baseline
     
     # Player data to choose from
-    choosePlayers <- subset(prdata,available=='yes' & !(position %in% c("DST","K")))
+    choosePlayers <- prdata %>% 
+      is_available(tibble(rv$draftBoard)) %>% 
+      filter(!(position %in% c("DST","K"))) %>% 
+      mutate(costEst = predict.lm(costModel(),.))
     
     result <- optimRoster(
       prdata = choosePlayers,
