@@ -73,13 +73,7 @@ shinyServer(function(input, output, session) {
       Name = character(),
       Position = character(),
       Cost = integer()
-    ),
-    QBupdate = 0,
-    RBupdate = 0,
-    WRupdate = 0,
-    TEupdate = 0,
-    DSTupdate = 0,
-    Kupdate = 0
+    )
   )
   baseline <- NULL
   baseline$QB <- reactive({wt$QB * input$overallAAV * input$QBAAV})
