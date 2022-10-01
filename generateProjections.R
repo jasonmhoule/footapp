@@ -1,6 +1,7 @@
 # This is a high level script for scraping projections and augmenting these with AAV based on league.
 
 # Source the function to use and complete auction prep
+# test
 source("scrapeValues.R")
 auctionPrep()
 
